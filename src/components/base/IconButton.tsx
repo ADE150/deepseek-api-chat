@@ -22,12 +22,38 @@ export const IconButton = ({
   tooltip?: string
   tooltipPlacement?: TooltipPlacement
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'title'>) => {
+  const { onPointerUp, onClick, ...buttonProps } = props
   const button = (
     <button
       type="button"
       className={clsx(styles.button, styles[size], styles[tone], className)}
       aria-label={tooltip}
-      {...props}
+      {...buttonProps}
+      onPointerUp={(event) => {
+        // 触屏点击后主动失焦。浏览器会在 pointerup 之后的 click 默认行为里重新聚焦，
+        // 所以延迟到下一轮事件循环再 blur，避免 Android WebView 留下持续的高亮/涟漪。
+        if (event.pointerType !== 'mouse') {
+          const button = event.currentTarget
+          window.setTimeout(() => {
+            if (document.activeElement === button) {
+              button.blur()
+            }
+          }, 0)
+        }
+        onPointerUp?.(event)
+      }}
+      onClick={(event) => {
+        // detail > 0 表示鼠标/触摸点击；键盘激活 detail 为 0，保留键盘焦点。
+        if (event.detail > 0) {
+          const button = event.currentTarget
+          window.setTimeout(() => {
+            if (document.activeElement === button) {
+              button.blur()
+            }
+          }, 0)
+        }
+        onClick?.(event)
+      }}
     >
       {icon}
     </button>

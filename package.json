@@ -1,6 +1,6 @@
 {
   "name": "deepseek-api-chat",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "DSChat — an open-source DeepSeek API chat client with conversation forking, pinning, and search.",
   "license": "MIT",
   "private": true,

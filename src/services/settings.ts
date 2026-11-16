@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { TtsVoice } from './api/speech.js'
 import { normalizeLocation, type UserLocation } from './location.js'
+import { DEFAULT_PERSONA, DEFAULT_PERSONA_ID, type Persona } from './personas.js'
 
 export type Locale = 'zh-CN' | 'en-US'
 
@@ -17,6 +18,8 @@ type Settings = {
   thinking: boolean
   search: boolean
   autoRead: boolean
+  personas: Persona[]
+  activePersonaId: string
   siderCollapsed: boolean
 }
 
@@ -29,6 +32,8 @@ const KEYS = {
   thinking: 'dschat:thinking',
   search: 'dschat:search',
   autoRead: 'dschat:auto-read',
+  personas: 'dschat:personas',
+  activePersona: 'dschat:active-persona',
   siderCollapsed: 'dschat:sider-collapsed',
 } as const
 
@@ -89,6 +94,34 @@ const initialThemePreference = (): ThemePreference => {
 /** 未保存过时使用服务端默认音色 stella（海星） */
 const initialTtsVoice = (): TtsVoice => (read(KEYS.ttsVoice) === 'tide' ? 'tide' : 'stella')
 
+const readPersonas = (): Persona[] => {
+  try {
+    const parsed: unknown = JSON.parse(read(KEYS.personas) ?? 'null')
+    const valid = (Array.isArray(parsed) ? parsed : []).filter(
+      (item): item is Persona =>
+        typeof item === 'object' &&
+        item !== null &&
+        typeof (item as Persona).id === 'string' &&
+        typeof (item as Persona).name === 'string' &&
+        typeof (item as Persona).prompt === 'string'
+    )
+    const byId = new Map(valid.map((persona) => [persona.id, persona]))
+    if (!byId.has(DEFAULT_PERSONA_ID)) {
+      byId.set(DEFAULT_PERSONA_ID, DEFAULT_PERSONA)
+    }
+    return [...byId.values()]
+  } catch {
+    return [DEFAULT_PERSONA]
+  }
+}
+
+const initialPersonas = readPersonas()
+
+const initialActivePersonaId = () => {
+  const saved = read(KEYS.activePersona)
+  return initialPersonas.some((persona) => persona.id === saved) ? saved : DEFAULT_PERSONA_ID
+}
+
 export const useSettings = create<Settings>(() => ({
   apiKey: read(KEYS.apiKey),
   locale: initialLocale(),
@@ -98,6 +131,8 @@ export const useSettings = create<Settings>(() => ({
   thinking: read(KEYS.thinking) === 'true',
   search: read(KEYS.search) === 'true',
   autoRead: read(KEYS.autoRead) === 'true',
+  personas: initialPersonas,
+  activePersonaId: initialActivePersonaId() ?? DEFAULT_PERSONA_ID,
   siderCollapsed: read(KEYS.siderCollapsed) === 'true',
 }))
 
@@ -145,4 +180,42 @@ export const setSiderCollapsed = (siderCollapsed: boolean) => {
 export const setAutoRead = (autoRead: boolean) => {
   write(KEYS.autoRead, String(autoRead))
   useSettings.setState({ autoRead })
+}
+
+export const setActivePersona = (activePersonaId: string) => {
+  if (!useSettings.getState().personas.some((persona) => persona.id === activePersonaId)) {
+    return
+  }
+  write(KEYS.activePersona, activePersonaId)
+  useSettings.setState({ activePersonaId })
+}
+
+export const savePersona = (persona: Persona) => {
+  const personas = useSettings.getState().personas
+  const next = personas.some((item) => item.id === persona.id)
+    ? personas.map((item) => (item.id === persona.id ? persona : item))
+    : [...personas, persona]
+  write(KEYS.personas, JSON.stringify(next))
+  useSettings.setState({ personas: next })
+}
+
+export const removePersona = (id: string) => {
+  if (id === DEFAULT_PERSONA_ID) {
+    return
+  }
+  const state = useSettings.getState()
+  const personas = state.personas.filter((persona) => persona.id !== id)
+  const activePersonaId = state.activePersonaId === id ? DEFAULT_PERSONA_ID : state.activePersonaId
+  write(KEYS.personas, JSON.stringify(personas))
+  write(KEYS.activePersona, activePersonaId)
+  useSettings.setState({ personas, activePersonaId })
+}
+
+/** 当前请求使用的 system prompt；空白时回退到默认人设。 */
+export const getActiveSystemPrompt = () => {
+  const { personas, activePersonaId } = useSettings.getState()
+  return (
+    personas.find((persona) => persona.id === activePersonaId)?.prompt.trim() ||
+    DEFAULT_PERSONA.prompt
+  )
 }

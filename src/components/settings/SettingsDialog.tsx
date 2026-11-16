@@ -34,6 +34,7 @@ import { Modal } from '../base/Modal.js'
 import { Select } from '../base/Select.js'
 import { showToast } from '../base/toastState.js'
 import { ApiKeyConfirm, ApiKeyField, useApiKeyEditor } from './ApiKeyField.js'
+import { PersonaDialog } from './PersonaDialog.js'
 import { closeSettings, useSettingsDialog, type SettingsSection } from './settingsDialogState.js'
 import styles from './Settings.module.css'
 
@@ -99,6 +100,7 @@ const SettingsContent = () => {
             <>
               <ThemeSetting />
               <LocaleSetting />
+              <PersonaSetting />
               <TtsVoiceSetting />
               <LocationSetting />
             </>
@@ -289,6 +291,35 @@ const LocaleSetting = () => {
         />
       }
     />
+  )
+}
+
+/** 人设与系统提示词：显示当前人设，打开管理弹窗。 */
+const PersonaSetting = () => {
+  const t = useTranslate()
+  const personas = useSettings((state) => state.personas)
+  const activeId = useSettings((state) => state.activePersonaId)
+  const active = personas.find((persona) => persona.id === activeId) ?? personas[0]
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <SettingCell
+        label={t('settingsPersona')}
+        description={t('personaDescription', { name: active?.name ?? '' })}
+        status={null}
+        action={
+          <Button
+            variant="outlined"
+            size="m"
+            className={styles.cellButton}
+            onClick={() => setOpen(true)}
+          >
+            {t('settingsPersonaManage')}
+          </Button>
+        }
+      />
+      {open ? <PersonaDialog onClose={() => setOpen(false)} /> : null}
+    </>
   )
 }
 

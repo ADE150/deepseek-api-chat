@@ -23,6 +23,8 @@ both the web and Android.
 | --- | --- |
 | ![Fork](docs/screenshots/fork.png) | ![Welcome](docs/screenshots/welcome.png) |
 
+![Cross-session branch graph](docs/screenshots/graph.png)
+
 ## Features
 
 - Streaming chat, deep thinking, web search, link reading, and source citations.
@@ -34,6 +36,10 @@ both the web and Android.
 - **Message search**: search across all conversations and show one result per matching
   message. A conversation with multiple hits appears multiple times; clicking a result
   opens the conversation and scrolls to that message.
+- **Persona presets**: create, edit, delete, and activate named system prompts; the active
+  persona is sent with every request.
+- **Cross-session branch graph**: visualize forked conversations and click a node to open
+  the session.
 - **Interactive mobile drawer**: drag from the left side to reveal the drawer. It follows
   your finger, dims the page proportionally, and settles with an animation. Swipe left on
   the drawer to close it.

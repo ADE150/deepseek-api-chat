@@ -2,6 +2,7 @@ import clsx from 'clsx'
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useTranslate } from '../../i18n/index.js'
 import {
+  IconBranchOutline20,
   IconCloseOutline16,
   IconPanelLeftOutline16,
   IconSearchOutline16,
@@ -19,6 +20,7 @@ import { IconButton } from '../base/IconButton.js'
 import { Modal } from '../base/Modal.js'
 import { showToast } from '../base/toastState.js'
 import { openSettings } from '../settings/settingsDialogState.js'
+import { BranchGraphDialog } from './BranchGraphDialog.js'
 import { closeMobileSider, useMobileSider } from './mobileSiderState.js'
 import { SearchResultItem } from './SearchResultItem.js'
 import { SessionItem } from './SessionItem.js'
@@ -38,6 +40,7 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
   const [results, setResults] = useState<MessageSearchResult[]>([])
   const [searchPending, setSearchPending] = useState(false)
   const [searchError, setSearchError] = useState(false)
+  const [graphOpen, setGraphOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const drawerOpen = useMobileSider((state) => state.open)
 
@@ -134,6 +137,18 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
             tooltip={t(searching ? 'close' : 'searchChats')}
             tooltipPlacement="bottom"
             onClick={searching ? closeSearch : () => setSearching(true)}
+          />
+          <IconButton
+            size="m"
+            icon={<IconBranchOutline20 />}
+            tooltip={t('branchGraph')}
+            tooltipPlacement="bottom"
+            onClick={() => {
+              setGraphOpen(true)
+              if (mobile) {
+                closeMobileSider()
+              }
+            }}
           />
           <IconButton
             size="m"
@@ -236,6 +251,16 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
           <span className={styles.settingsLabel}>{t('settings')}</span>
         </button>
       </div>
+      {graphOpen ? (
+        <BranchGraphDialog
+          onClose={() => setGraphOpen(false)}
+          onSelect={(sessionId) => {
+            selectSession(sessionId)
+            closeMobileSider()
+            setGraphOpen(false)
+          }}
+        />
+      ) : null}
       {deleting ? (
         <Modal
           title={t('deleteSessionModalContentTitle')}

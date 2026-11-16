@@ -11,6 +11,8 @@
   font-size: 16px;
   transition: background-color var(--ds-transition-duration) var(--ds-ease-in-out);
   outline: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 
   &:active:not(:disabled) {
     background-color: var(--dsw-alias-interactive-bg-hover);
@@ -20,10 +22,10 @@
     &:hover:not(:disabled) {
       background-color: var(--dsw-alias-interactive-bg-hover);
     }
-  }
 
-  &:focus-visible {
-    box-shadow: 0 0 0 2px var(--dsw-alias-button-primary-fill);
+    &:focus-visible {
+      box-shadow: 0 0 0 2px var(--dsw-alias-button-primary-fill);
+    }
   }
 
   &:disabled {

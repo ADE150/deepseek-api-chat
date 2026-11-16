@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.3.0 — 2026-11-16
+
+### Added
+
+- Persona presets: create, edit, delete, and activate system-prompt personas; the active
+  persona is sent as the request `system` prompt.
+- Cross-session branch graph built from `forkedFrom` metadata, with clickable nodes that
+  open the selected conversation.
+
+### Fixed
+
+- Tapping icon buttons no longer leaves a persistent Android focus highlight/ripple on
+  touch devices; icon buttons blur after non-mouse pointer activation.
+
 ## v0.2.1 — 2026-11-16
 
 ### Fixed

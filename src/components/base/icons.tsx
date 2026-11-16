@@ -202,6 +202,20 @@ export const IconNewChatOutline20 = () => (
   </svg>
 )
 
+export const IconBranchOutline20 = () => (
+  <svg width={20} height={20} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="5" cy="4" r="2" stroke="currentColor" strokeWidth="1.4" />
+    <circle cx="5" cy="16" r="2" stroke="currentColor" strokeWidth="1.4" />
+    <circle cx="15" cy="10" r="2" stroke="currentColor" strokeWidth="1.4" />
+    <path
+      d="M5 6V14M7 4H9.5C11.7 4 13 5.4 13 7.5V8M7 16H9.5C11.7 16 13 14.6 13 12.5V12"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+    />
+  </svg>
+)
+
 export const IconVolumeOutline20 = () => (
   <svg width={20} height={20} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path
