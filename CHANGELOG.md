@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.2.1 — 2026-11-16
+
+### Fixed
+
+- Image viewer no longer zooms the whole page. Pinch and double-tap now scale only the
+  image, and page-level pinch zoom is suppressed while the viewer is open.
+- Pinch zoom keeps the gesture midpoint anchored and supports pan via native scrolling.
+
+### Added
+
+- Long screenshots are shown at the viewer width and can be scrolled vertically.
+- Signed Android release build configuration (`keystore.properties`, local keystore).
+
 ## v0.2.0 — 2026-11-16
 
 Project renamed from ChatLoom to **DSChat**; repository name: `deepseek-api-chat`.

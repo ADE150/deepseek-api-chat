@@ -39,8 +39,9 @@ both the web and Android.
   the drawer to close it.
 - **Auto read-aloud**: a header toggle makes every newly completed assistant reply speak
   automatically. The setting is persisted.
-- **In-app image viewer**: full-screen image preview with a close button and Android
-  back-key support; back returns to the same conversation.
+- **In-app image viewer**: full-screen image preview with image-only pinch zoom, double-tap
+  zoom, vertical scrolling for long screenshots, a close button, and Android back-key
+  support; back returns to the same conversation.
 - Simplified Chinese / English UI, light / dark / system theme, mobile layout.
 - PWA: installable from a browser, offline app shell.
 - Android APK via Capacitor, with microphone permission, file picker, native share for
@@ -112,8 +113,22 @@ pnpm assets        # regenerate Android icons and splash screens
 pnpm android:sync  # build web assets and sync them into the Android project
 ```
 
-For a release build, configure your own signing key in `android/app/build.gradle` and run
-`node scripts/android-build.mjs assembleRelease`.
+For a release build, create `android/keystore.properties` (gitignored):
+
+```properties
+storeFile=keystore/dschat-release.jks
+storePassword=...
+keyAlias=dschat
+keyPassword=...
+```
+
+Put the keystore under `android/keystore/` (also gitignored), then run:
+
+```sh
+node scripts/android-build.mjs assembleRelease
+```
+
+Back up the keystore and passwords. Future updates must be signed with the same key.
 
 ## Data and privacy
 

@@ -34,8 +34,8 @@
 - **跟手抽屉**：移动端从左侧向右滑，抽屉随手指平移、遮罩同步变暗，松手后吸附并播放
   过渡动画；在抽屉上向左滑可关闭。
 - **自动朗读**：顶栏开关，开启后新完成的 AI 回复自动朗读，设置持久化。
-- **应用内图片查看器**：全屏查看附件图片，支持关闭按钮和 Android 返回键，返回后仍停留
-  在原会话。
+- **应用内图片查看器**：全屏查看附件图片，支持图片级双指缩放、双击缩放、长截图上下
+  滚动、关闭按钮和 Android 返回键，返回后仍停留在原会话。
 - 中英文界面、浅色/深色/跟随系统主题、移动端布局。
 - PWA：浏览器安装、离线应用壳。
 - Android APK：Capacitor 打包，支持麦克风权限、文件选择器、历史导出原生分享，以及
@@ -99,8 +99,22 @@ pnpm assets        # 重新生成 Android 图标和启动图
 pnpm android:sync  # 构建 Web 产物并同步到 Android 工程
 ```
 
-发布版请在 `android/app/build.gradle` 配置自己的签名，然后运行
-`node scripts/android-build.mjs assembleRelease`。
+发布版请创建 `android/keystore.properties`（已加入 gitignore）：
+
+```properties
+storeFile=keystore/dschat-release.jks
+storePassword=...
+keyAlias=dschat
+keyPassword=...
+```
+
+把 keystore 放在 `android/keystore/`（同样已忽略），然后运行：
+
+```sh
+node scripts/android-build.mjs assembleRelease
+```
+
+务必单独备份 keystore 和密码；后续更新必须使用同一签名。
 
 ## 数据与隐私
 
