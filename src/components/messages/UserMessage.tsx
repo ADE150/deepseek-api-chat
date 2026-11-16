@@ -2,12 +2,13 @@ import { useTranslate } from '../../i18n/index.js'
 import clsx from 'clsx'
 import { memo, useLayoutEffect, useRef, useState } from 'react'
 import { useIsMobile } from '../../app/viewport.js'
-import { IconEditOutline16 } from '../base/icons.js'
-import { editMessage, retryUpload } from '../../services/chat/store.js'
+import { IconEditOutline16, IconForkOutline16 } from '../base/icons.js'
+import { editMessage, forkSession, retryUpload } from '../../services/chat/store.js'
 import { stopReadAloud } from '../../services/speech/readAloud.js'
 import type { UserMessage as UserMessageType } from '../../services/chat/types.js'
 import { Button } from '../base/Button.js'
 import { IconButton } from '../base/IconButton.js'
+import { showToast } from '../base/toastState.js'
 import { ensureApiKey } from '../settings/settingsDialogState.js'
 import {
   BranchSwitcher,
@@ -60,8 +61,17 @@ export const UserMessage = memo(function UserMessage({
     }
   }
 
+  const fork = () => {
+    stopReadAloud()
+    if (forkSession(sessionId, message.id)) {
+      showToast({ key: 'sessionForked' })
+    } else {
+      showToast({ key: 'sessionForkFailed', type: 'error' })
+    }
+  }
+
   return (
-    <div className={clsx(styles.container, isFirst && styles.isFirst)}>
+    <div className={clsx(styles.container, isFirst && styles.isFirst)} data-message-id={message.id}>
       {message.files.length > 0 ? (
         <div
           className={clsx(
@@ -125,6 +135,13 @@ export const UserMessage = memo(function UserMessage({
                   setDraft(message.content)
                   setEditing(true)
                 }}
+              />
+              <IconButton
+                icon={<IconForkOutline16 />}
+                tooltip={t('forkBeforeMessage')}
+                tooltipPlacement="bottom"
+                disabled={busy || isFirst}
+                onClick={fork}
               />
             </div>
             <BranchSwitcher versions={versions} disabled={busy} onSelect={onSelectVersion} />

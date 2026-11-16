@@ -1,18 +1,27 @@
 {
-  "name": "chat-demo",
-  "version": "0.1.1",
-  "description": "基于 DeepSeek API 的静态聊天示例。",
+  "name": "deepseek-api-chat",
+  "version": "0.2.0",
+  "description": "DSChat — an open-source DeepSeek API chat client with conversation forking, pinning, and search.",
   "license": "MIT",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "rspack serve -c rspack.config.ts",
-    "build": "rm -rf dist && NODE_ENV=production rspack build -c rspack.config.ts",
+    "build": "node scripts/build.mjs",
     "type": "tsc -p tsconfig.json",
     "lint": "oxlint src rspack.config.ts",
-    "format": "oxfmt --write ."
+    "format": "oxfmt --write .",
+    "assets": "capacitor-assets generate --android",
+    "android:sync": "node scripts/build.mjs && cap sync android",
+    "android:apk": "node scripts/build.mjs && cap sync android && node scripts/android-build.mjs assembleDebug"
   },
   "dependencies": {
+    "@capacitor/android": "8.6.2",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.6.2",
+    "@capacitor/filesystem": "8.1.5",
+    "@capacitor/share": "8.0.3",
+    "@capacitor/status-bar": "8.0.4",
     "@types/katex": "^0.16.5",
     "@types/mdast": "~4.0.3",
     "@types/prismjs": "^1.26.1",
@@ -35,6 +44,8 @@
     "zustand": "4.4.7"
   },
   "devDependencies": {
+    "@capacitor/assets": "4.0.0",
+    "@capacitor/cli": "8.6.2",
     "@rspack/cli": "2.0.2",
     "@rspack/core": "2.0.2",
     "@rspack/dev-server": "2.0.1",

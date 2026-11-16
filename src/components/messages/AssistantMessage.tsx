@@ -1,15 +1,21 @@
 import { useTranslate } from '../../i18n/index.js'
 import clsx from 'clsx'
-import { memo } from 'react'
-import { IconRefreshOutline16, IconWarningOutline16 } from '../base/icons.js'
+import { memo, useEffect, useRef } from 'react'
+import { IconForkOutline16, IconRefreshOutline16, IconWarningOutline16 } from '../base/icons.js'
 import { describeReply } from '../../services/chat/describe.js'
-import { canContinueReply } from '../../services/chat/reply.js'
-import { continueReply, regenerateReply } from '../../services/chat/store.js'
-import { stopReadAloud } from '../../services/speech/readAloud.js'
+import { canContinueReply, getReplyText } from '../../services/chat/reply.js'
+import { continueReply, forkSession, regenerateReply } from '../../services/chat/store.js'
+import {
+  describeReadAloudError,
+  readAloud,
+  stopReadAloud,
+} from '../../services/speech/readAloud.js'
+import { useSettings } from '../../services/settings.js'
 import type { AssistantMessage as AssistantMessageType } from '../../services/chat/types.js'
 import { openSettings } from '../settings/settingsDialogState.js'
 import { IconButton } from '../base/IconButton.js'
 import { Button } from '../base/Button.js'
+import { showToast } from '../base/toastState.js'
 import { Markdown } from '../markdown/Markdown.js'
 import { SiteThumbnails } from '../search/SiteLogo.js'
 import { toggleSearchPanel, useSearchPanel } from '../search/searchPanelState.js'
@@ -56,8 +62,36 @@ export const AssistantMessage = memo(function AssistantMessage({
   const copyText = responseText || notice?.text
   const waiting = streaming && view.steps.length === 0 && !view.answer && !message.thinking
   const summaryEntry = `${message.id}-summary`
+  const autoRead = useSettings((state) => state.autoRead)
+  const previousStatus = useRef(message.status)
+  // 只在本次回复从生成中变为完成时自动朗读；打开历史会话不会补读旧回答。
+  useEffect(() => {
+    const previous = previousStatus.current
+    previousStatus.current = message.status
+    if (!autoRead || !isLast || document.visibilityState !== 'visible') {
+      return
+    }
+    if (message.status !== 'done' || message.stopReason === 'refusal') {
+      return
+    }
+    if (previous !== 'pending' && previous !== 'streaming') {
+      return
+    }
+    const text = getReplyText(message)
+    if (text.trim()) {
+      readAloud(message.id, text, (error) => showToast(describeReadAloudError(error)))
+    }
+  }, [autoRead, isLast, message, message.id, message.status])
+  const fork = () => {
+    stopReadAloud()
+    if (forkSession(sessionId, message.id)) {
+      showToast({ key: 'sessionForked' })
+    } else {
+      showToast({ key: 'sessionForkFailed', type: 'error' })
+    }
+  }
   return (
-    <div className={styles.message}>
+    <div className={styles.message} data-message-id={message.id}>
       {refused ? null : (
         <ReplyArea
           message={message}
@@ -155,6 +189,13 @@ export const AssistantMessage = memo(function AssistantMessage({
                 stopReadAloud()
                 regenerateReply(sessionId, message.id)
               }}
+            />
+            <IconButton
+              icon={<IconForkOutline16 />}
+              tooltip={t('forkFromMessage')}
+              tooltipPlacement="bottom"
+              disabled={busy || refused}
+              onClick={fork}
             />
           </div>
           {isLast && canContinueReply(message) ? (

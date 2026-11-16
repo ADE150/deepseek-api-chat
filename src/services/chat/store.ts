@@ -1,11 +1,18 @@
 import { create } from 'zustand'
+import { translate } from '../../i18n/index.js'
 import { createId } from '../../utils/id.js'
 import { ApiError, streamMessage } from '../api/client.js'
 import type { ChatModel, CreateMessageRequest } from '../api/types.js'
 import { extractFileIds, getFileErrorCode, isRetryableApiError } from '../api/errors.js'
 import { cancelUpload, describeUploadError, uploadAttachment, useUploads } from '../attachments.js'
 import { useSettings } from '../settings.js'
-import { appendBranch, getVisibleMessages, normalizeSession, selectVersion } from './branches.js'
+import {
+  appendBranch,
+  forkSessionAt,
+  getVisibleMessages,
+  normalizeSession,
+  selectVersion,
+} from './branches.js'
 import * as db from './db.js'
 import {
   clearAllDrafts,
@@ -90,7 +97,9 @@ export const useChatStore = create<ChatState>(() => ({
 const { getState: get, setState: set } = useChatStore
 
 const sortSessions = (sessions: SessionSummary[]) =>
-  [...sessions].sort((a, b) => b.updatedAt - a.updatedAt)
+  [...sessions].sort(
+    (a, b) => Number(b.pinned === true) - Number(a.pinned === true) || b.updatedAt - a.updatedAt
+  )
 
 const getSession = (id: string) => {
   const cache = get().sessionCache
@@ -103,7 +112,10 @@ const getStreamController = (id: string) => {
 }
 
 const sameSummary = (a: SessionSummary, b: SessionSummary) =>
-  a.title === b.title && a.createdAt === b.createdAt && a.updatedAt === b.updatedAt
+  a.title === b.title &&
+  a.createdAt === b.createdAt &&
+  a.updatedAt === b.updatedAt &&
+  a.pinned === b.pinned
 
 const sessionAccess = new Map<string, number>()
 const unsavedSessions = new Set<string>()
@@ -477,6 +489,31 @@ export const renameSession = (id: string, title: string) => {
   }
 }
 
+/** 置顶/取消置顶会话；置顶项排在普通会话前，不改变 updatedAt。 */
+export const togglePinnedSession = (id: string) => {
+  if (get().importingHistory || deletingSessions.has(id)) {
+    return
+  }
+  const summary = get().sessions.find((session) => session.id === id)
+  if (!summary) {
+    return
+  }
+  const pinned = !summary.pinned
+  if (getSession(id)) {
+    updateSession(id, (session) => ({ ...session, pinned: pinned ? true : undefined }))
+    persist(id)
+  } else {
+    set((state) => ({
+      sessions: sortSessions(
+        state.sessions.map((session) =>
+          session.id === id ? { ...session, pinned: pinned ? true : undefined } : session
+        )
+      ),
+    }))
+    void db.setSessionPinned(id, pinned).catch(db.reportStorageError('pin session'))
+  }
+}
+
 /**
  * 删除会话；本地原件仅在没有其他会话引用时清理。远端文件不删：导入、编辑、重新生成都会复用同一个附件，
  * 同一服务端文件可能被多个会话引用，不维护引用计数。
@@ -672,6 +709,47 @@ export const editMessage = (sessionId: string, messageId: string, content: strin
   persist(sessionId)
   void streamReply(sessionId, reply, { history: path.slice(0, index), question })
   return true
+}
+
+/** 分叉标题：避免对分叉再分叉时重复叠加后缀。 */
+const createForkTitle = (sourceTitle: string): string => {
+  const marker = '\u0000'
+  const suffix = translate('forkedSessionTitle', { title: marker }).replace(marker, '')
+  let base = sourceTitle || translate('untitledChat')
+  while (suffix && base.endsWith(suffix)) {
+    base = base.slice(0, -suffix.length).trimEnd()
+  }
+  return translate('forkedSessionTitle', {
+    title: base || translate('untitledChat'),
+  })
+}
+
+/**
+ * 从当前路径的某条消息分叉出新会话，原会话保持不变。
+ * assistant 消息包含在本轮；user 消息分叉在它之前。返回新会话 id，失败返回 null。
+ */
+export const forkSession = (sessionId: string, messageId: string): string | null => {
+  if (get().importingHistory || deletingSessions.has(sessionId) || getStreamController(sessionId)) {
+    return null
+  }
+  const source = getSession(sessionId)
+  if (!source) {
+    return null
+  }
+  const now = Date.now()
+  const forked = forkSessionAt(source, messageId, createId(), now, createForkTitle(source.title))
+  if (!forked) {
+    return null
+  }
+  touchSession(forked.id)
+  set((state) => ({
+    sessions: sortSessions([toSessionSummary(forked), ...state.sessions]),
+    sessionCache: { ...state.sessionCache, [forked.id]: forked },
+    activeId: forked.id,
+  }))
+  persist(forked.id)
+  trimSessionCache()
+  return forked.id
 }
 
 export const selectMessageVersion = (sessionId: string, messageId: string) => {

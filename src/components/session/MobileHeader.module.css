@@ -7,6 +7,11 @@
   padding: 12px 10px 4px;
 }
 
+.autoReadActive {
+  color: var(--dsw-alias-brand-primary);
+  background-color: var(--dsw-alias-interactive-bg-hover);
+}
+
 .title {
   flex: 1;
   min-width: 0;

@@ -16,18 +16,20 @@ type Settings = {
   ttsVoice: TtsVoice
   thinking: boolean
   search: boolean
+  autoRead: boolean
   siderCollapsed: boolean
 }
 
 const KEYS = {
-  apiKey: 'chat-demo:api-key',
-  locale: 'chat-demo:locale',
-  location: 'chat-demo:location',
-  themePreference: 'chat-demo:theme-preference',
-  ttsVoice: 'chat-demo:tts-voice',
-  thinking: 'chat-demo:thinking',
-  search: 'chat-demo:search',
-  siderCollapsed: 'chat-demo:sider-collapsed',
+  apiKey: 'dschat:api-key',
+  locale: 'dschat:locale',
+  location: 'dschat:location',
+  themePreference: 'dschat:theme-preference',
+  ttsVoice: 'dschat:tts-voice',
+  thinking: 'dschat:thinking',
+  search: 'dschat:search',
+  autoRead: 'dschat:auto-read',
+  siderCollapsed: 'dschat:sider-collapsed',
 } as const
 
 const read = (key: string) => {
@@ -95,6 +97,7 @@ export const useSettings = create<Settings>(() => ({
   ttsVoice: initialTtsVoice(),
   thinking: read(KEYS.thinking) === 'true',
   search: read(KEYS.search) === 'true',
+  autoRead: read(KEYS.autoRead) === 'true',
   siderCollapsed: read(KEYS.siderCollapsed) === 'true',
 }))
 
@@ -137,4 +140,9 @@ export const setSearch = (search: boolean) => {
 export const setSiderCollapsed = (siderCollapsed: boolean) => {
   write(KEYS.siderCollapsed, String(siderCollapsed))
   useSettings.setState({ siderCollapsed })
+}
+
+export const setAutoRead = (autoRead: boolean) => {
+  write(KEYS.autoRead, String(autoRead))
+  useSettings.setState({ autoRead })
 }

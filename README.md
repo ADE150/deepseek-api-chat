@@ -1,75 +1,166 @@
-# chat-demo
+# DSChat
 
 English | [简体中文](README.zh-CN.md)
 
-A static chat demo powered by the DeepSeek API. No application backend is required: the browser connects directly to the configured API service.
+**DSChat** is an open-source DeepSeek API chat client built on DeepSeek's official
+open-source [`chat-demo`](https://github.com/deepseek-ai/chat-demo) framework (MIT).
+It aims to be a first-class community client: local-first, BYOK, and pleasant to use on
+both the web and Android.
 
-You can [try the app online](https://deepseek-ai.github.io/chat-demo/) or download the archive from [Releases](https://github.com/deepseek-ai/deepseek-chat-demo/releases), extract it, and double-click `index.html` to use it locally without installation or a build. Enter your API key in Settings before your first chat.
+> DeepSeek publishes `chat-demo` openly under the MIT license. DSChat builds on that
+> foundation. It is an independent community project, not an official DeepSeek product and
+> not endorsed by DeepSeek. "DeepSeek" is a trademark of its owner.
 
-## Getting started
+- Repository: [ADE150/deepseek-api-chat](https://github.com/ADE150/deepseek-api-chat)
+- Android package: `io.github.ade150.dschat`
+- License: MIT
 
-Install Node.js 22.12+ and pnpm, then run:
+| Drawer | Message search |
+| --- | --- |
+| ![Drawer](docs/screenshots/drawer.png) | ![Search](docs/screenshots/search.png) |
 
-```sh
-git clone https://github.com/deepseek-ai/chat-demo.git
-cd chat-demo
-pnpm install
-pnpm dev
-```
-
-Open http://localhost:8090.
-
-To build the static site:
-
-```sh
-pnpm build
-```
-
-The output is written to `dist/`. Deploy it to a static web server or open `dist/index.html` directly. Opening the file directly requires browser support for storage on `file://` pages and an API service that permits their cross-origin requests.
+| Conversation forking | Welcome |
+| --- | --- |
+| ![Fork](docs/screenshots/fork.png) | ![Welcome](docs/screenshots/welcome.png) |
 
 ## Features
 
-- Multiple conversations with automatic titles, renaming, and deletion; edit prompts, regenerate replies, and switch between message branches.
-- Streaming replies, deep thinking, smart search, link reading, and source citations; stop generation or continue eligible replies.
-- Upload, paste, or drag and drop attachments; use voice input and read replies aloud. A live audio spectrum appears in the first row of the input area while recording on mobile.
-- Markdown, syntax highlighting, KaTeX math, and Mermaid diagrams.
-- Simplified Chinese and English, light and dark themes, mobile layouts, location settings, and chat history import and export.
+- Streaming chat, deep thinking, web search, link reading, and source citations.
+- Attachments: images, PDF, Office documents, text, and code.
+- Markdown, syntax highlighting, KaTeX, and Mermaid.
+- **Conversation forking**: continue from any assistant reply in a new conversation while
+  keeping the original conversation untouched.
+- **Pinned conversations**: pin any chat to the top; unpin it from the same menu.
+- **Message search**: search across all conversations and show one result per matching
+  message. A conversation with multiple hits appears multiple times; clicking a result
+  opens the conversation and scrolls to that message.
+- **Interactive mobile drawer**: drag from the left side to reveal the drawer. It follows
+  your finger, dims the page proportionally, and settles with an animation. Swipe left on
+  the drawer to close it.
+- **Auto read-aloud**: a header toggle makes every newly completed assistant reply speak
+  automatically. The setting is persisted.
+- **In-app image viewer**: full-screen image preview with a close button and Android
+  back-key support; back returns to the same conversation.
+- Simplified Chinese / English UI, light / dark / system theme, mobile layout.
+- PWA: installable from a browser, offline app shell.
+- Android APK via Capacitor, with microphone permission, file picker, native share for
+  history export, and left-edge gesture exclusion for the drawer.
+- History import/export in the DeepSeek v3 ZIP format.
 
-## Data and storage
+## How forking works
 
-Your API key and settings are stored in the browser's localStorage. Conversations and original attachments are stored in IndexedDB. Local data is isolated by browser profile and site origin. Sending messages, uploading attachments, and using speech features sends the relevant content to the configured API service.
+Sessions are stored as a message tree (`parentId` / `selectedChildId`). Forking copies only
+the currently selected path into a new session:
 
-History import and export in Settings use ZIP archives. After confirmation and successful validation, importing replaces all local conversations and attachments. Exports include conversations and locally available original images, but exclude API keys, settings, and original non-image attachments. See the [history import/export documentation (Chinese)](src/services/chat/history/README.md) for the archive format and preservation details.
+- Fork on an **assistant** message: the new conversation includes that answer.
+- Fork on a **user** message: the new conversation is created *before* that question, so it
+  does not end with an unanswered message.
+- Every copied message gets a new ID; attachments are shared by ID and cleaned up by
+  reference count.
+- The new session stores `forkedFrom` locally for future branch-graph views.
 
-Settings → Data → Delete all chats clears all local conversations, original attachments, and unsent drafts after confirmation. It stops ongoing replies and returns to a new chat. Your API key and settings are preserved; files already uploaded to the API service are not deleted.
+## Search and pinning
 
-## Development
+- Pinned sessions are stored locally and shown in a separate **Pinned** group above the
+  normal time groups.
+- Search reads the currently selected branch of every conversation and matches user
+  questions and assistant text. Results are message-level, not conversation-level.
+- Search is debounced and runs against IndexedDB, so it also covers conversations that are
+  not currently open.
 
-| Command       | Description                  |
-| ------------- | ---------------------------- |
-| `pnpm dev`    | Start the development server |
-| `pnpm build`  | Build into `dist/`           |
-| `pnpm type`   | Run TypeScript type checks   |
-| `pnpm lint`   | Lint with oxlint             |
-| `pnpm format` | Format with oxfmt            |
+## Web development
 
-[rspack.config.ts](rspack.config.ts) uses `https://api.deepseek.com` by default. Use `createConfig({ apiOrigin, devServer })` to customize the API origin and development server proxy.
+Requirements: Node.js 22.12+ and pnpm.
 
-Chat uses `deepseek-flash` by default through Anthropic-compatible Messages / Files APIs. Speech features use ASR / TTS endpoints. Requests include extensions for search, link reading, titles, and `latest_reminder`, so the configured service must support the corresponding capabilities. Supported attachment formats are determined by server-side validation.
+```sh
+pnpm install
+pnpm dev      # http://localhost:8090
+pnpm type
+pnpm lint
+pnpm build    # dist/
+```
+
+`pnpm build` is cross-platform. Serve `dist/` over HTTPS (or `localhost`) to use the PWA.
+The service worker is registered only in production web builds; it is skipped inside the
+Android WebView.
+
+## Android APK
+
+Requirements: JDK 21, Android SDK with platform 36, and `ANDROID_HOME` (or the SDK in the
+default Windows location). Minimum Android version: 7.0 (API 24).
+
+```sh
+pnpm android:apk
+```
+
+The debug APK is written to:
+
+```text
+android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+Install it on a connected device:
+
+```sh
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+Other helper scripts:
+
+```sh
+pnpm assets        # regenerate Android icons and splash screens
+pnpm android:sync  # build web assets and sync them into the Android project
+```
+
+For a release build, configure your own signing key in `android/app/build.gradle` and run
+`node scripts/android-build.mjs assembleRelease`.
+
+## Data and privacy
+
+- The API key is stored in this browser/WebView's `localStorage` (`dschat:api-key`).
+  It is never written to the repository or the APK.
+- Conversations and attachment originals live in IndexedDB (`dschat`).
+- There is no application backend. Requests go directly from the client to
+  `https://api.deepseek.com/anthropic/v1`.
+- Android sets `android:allowBackup="false"` so the API key and chats are not included in
+  cloud backups. Uninstalling the app removes its local data.
+- Exported history uses the DeepSeek v3 ZIP format and does not include the API key or app
+  settings.
+
+## Project structure
 
 ```text
 src/
-  app/                 Application layout, themes, and global styles
-  components/          Chat, settings, Markdown, and other UI components
-  i18n/                English and Chinese translations
+  app/          layout, theme, native bridge, drawer gesture
+  components/   chat, settings, Markdown, messages, sidebar
+  i18n/         Chinese and English strings
   services/
-    api/               API requests, SSE, and protocol types
-    chat/              Conversations, message branches, storage, and history import/export
-    markdown/          Markdown parsing, syntax highlighting, and diagrams
-    speech/            Audio recording and read-aloud playback
-  utils/               Shared utilities
+    api/        Messages API, SSE, speech
+    chat/       sessions, branches, storage, search, history import/export
+    markdown/   Markdown, highlighting, KaTeX, Mermaid
+    speech/     recording and read-aloud
+  utils/
+android/        Capacitor Android project
+public/         manifest, service worker, icons
+scripts/        asset generation and cross-platform build helpers
 ```
 
-## License
+## Roadmap
 
-[MIT](LICENSE). The build copies the license to `dist/LICENSE`; include it when distributing the app. Third-party dependencies are subject to their own licenses.
+- Persona / system-prompt presets.
+- Visual branch graph across forked sessions.
+- More native integrations: share targets, notifications, and file opening.
+- Release signing and store-ready builds.
+
+## Contributing
+
+Issues and pull requests are welcome. Please keep changes focused, keep user data
+local-first, and preserve the upstream MIT notice.
+
+## Credits and license
+
+Based on [deepseek-ai/chat-demo](https://github.com/deepseek-ai/chat-demo), MIT licensed.
+See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).
+
+DSChat is an independent community project. Please do not present it as an official
+DeepSeek application.

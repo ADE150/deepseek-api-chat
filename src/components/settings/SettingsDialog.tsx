@@ -15,6 +15,7 @@ import {
   exportHistory,
   importHistory,
 } from '../../services/chat/backup.js'
+import { isNativeApp } from '../../app/native.js'
 import { useIsMobile } from '../../app/viewport.js'
 import { useChatStore } from '../../services/chat/store.js'
 import { regionCodes, getRegionName, provinces } from '../../services/location.js'
@@ -512,6 +513,29 @@ const ImportHistory = ({
   )
 }
 
+/** 原生壳中把 ZIP 写入缓存并调用系统分享；Web 端继续走浏览器下载。 */
+const shareExport = async (name: string, blob: Blob) => {
+  const { Filesystem, Directory } = await import('@capacitor/filesystem')
+  const { Share } = await import('@capacitor/share')
+  const data = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result
+      if (typeof result !== 'string') {
+        reject(new Error('Unexpected export data'))
+        return
+      }
+      resolve(result.slice(result.indexOf(',') + 1))
+    }
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to read export'))
+    reader.readAsDataURL(blob)
+  })
+  const path = `dschat-export/${name}`
+  await Filesystem.writeFile({ path, data, directory: Directory.Cache, recursive: true })
+  const { uri } = await Filesystem.getUri({ path, directory: Directory.Cache })
+  await Share.share({ title: name, files: [uri], dialogTitle: name })
+}
+
 /** 将全部会话及图片导出为 ZIP 文件并下载 */
 const ExportHistory = ({ disabled }: { disabled: boolean }) => {
   const t = useTranslate()
@@ -524,12 +548,16 @@ const ExportHistory = ({ disabled }: { disabled: boolean }) => {
     setStatus(null)
     try {
       const { name, blob } = await exportHistory()
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = name
-      link.click()
-      setTimeout(() => URL.revokeObjectURL(url), 10_000)
+      if (isNativeApp()) {
+        await shareExport(name, blob)
+      } else {
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = name
+        link.click()
+        setTimeout(() => URL.revokeObjectURL(url), 10_000)
+      }
     } catch (error) {
       setStatus(errorStatus('historyExportFailed', error))
     } finally {

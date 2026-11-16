@@ -9,3 +9,8 @@ build/
 .env.*
 !.env.example
 tmp/
+releases/
+
+# Local working notes (kept locally, not published)
+PLAN.md
+PROGRESS.md

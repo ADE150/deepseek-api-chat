@@ -73,24 +73,39 @@ export const describeReadAloudError = (error: unknown): TranslationMessage | str
   }
 }
 
+let unlocked = false
+
 /**
- * 开始朗读一条回复的正文；同一条正在朗读时调用等于停止。
- * 必须在点击事件中同步调用：AudioContext 需要用户手势才能出声。
+ * 自动朗读前在用户手势里解锁音频。
+ * 播放一个极短的静音 buffer，让后续没有直接点击事件的 AudioContext 也能出声。
  */
-export const toggleReadAloud = (
-  messageId: string,
-  text: string,
-  onError: (error: unknown) => void
-) => {
-  const reading = useReadAloud.getState().messageId
-  stopReadAloud()
-  if (reading === messageId) {
+export const unlockReadAloudAudio = () => {
+  if (unlocked) {
     return
   }
+  try {
+    const context = new AudioContext({ sampleRate: TTS_SAMPLE_RATE })
+    const buffer = context.createBuffer(1, 1, context.sampleRate)
+    const source = context.createBufferSource()
+    source.buffer = buffer
+    source.connect(context.destination)
+    source.onended = () => void context.close().catch(() => {})
+    source.start()
+    void context.resume().catch(() => {})
+    unlocked = true
+  } catch {
+    // 自动朗读仍会尝试创建自己的 AudioContext。
+  }
+}
+
+const startReadAloud = (messageId: string, text: string, onError: (error: unknown) => void) => {
   const controller = new AbortController()
   const context = new AudioContext({ sampleRate: TTS_SAMPLE_RATE })
   current = { controller, context }
   useReadAloud.setState({ messageId, status: 'loading' })
+  if (context.state === 'suspended') {
+    void context.resume().catch(() => {})
+  }
   // 音色在开始朗读时读取，设置中切换后下一次朗读生效
   const { apiKey, ttsVoice } = useSettings.getState()
 
@@ -141,4 +156,30 @@ export const toggleReadAloud = (
       }
     }
   })()
+}
+
+/** 自动朗读：如果当前没有在读同一条，就停止旧朗读并开始新的。 */
+export const readAloud = (messageId: string, text: string, onError: (error: unknown) => void) => {
+  if (useReadAloud.getState().messageId === messageId) {
+    return
+  }
+  stopReadAloud()
+  startReadAloud(messageId, text, onError)
+}
+
+/**
+ * 手动朗读按钮：同一条正在朗读时调用等于停止。
+ * 必须在点击事件中同步调用：AudioContext 需要用户手势才能出声。
+ */
+export const toggleReadAloud = (
+  messageId: string,
+  text: string,
+  onError: (error: unknown) => void
+) => {
+  const reading = useReadAloud.getState().messageId
+  stopReadAloud()
+  if (reading === messageId) {
+    return
+  }
+  startReadAloud(messageId, text, onError)
 }

@@ -10,7 +10,7 @@ export const Welcome = () => {
   const isMobile = useIsMobile()
   return (
     <div className={styles.container}>
-      {isMobile ? <MobileHeader /> : null}
+      {isMobile ? <MobileHeader title={t('appName')} /> : null}
       <div className={styles.welcome}>
         <div className={styles.greeting}>{t('welcomeMessageChat250808')}</div>
         <ChatInput sessionId={null} />

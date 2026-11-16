@@ -5,6 +5,7 @@ import {
   getVisibleMessages,
   type MessageVersions,
 } from '../../services/chat/branches.js'
+import { clearMessageFocus, useMessageFocus } from '../../services/chat/focus.js'
 import { selectMessageVersion } from '../../services/chat/store.js'
 import type { Session } from '../../services/chat/types.js'
 import { closeSearchPanel } from '../search/searchPanelState.js'
@@ -60,6 +61,7 @@ export const MessageList = ({
     setPreviousVersions(versions)
   }
   const lastMessageId = messages.at(-1)?.id
+  const focus = useMessageFocus()
   const scrollToBottom = useCallback(() => {
     const el = scrollRef.current
     if (el && stickyRef.current) {
@@ -67,6 +69,28 @@ export const MessageList = ({
       scrollTopRef.current = el.scrollTop
     }
   }, [])
+
+  // 搜索结果跳转：会话加载并渲染后滚动到目标消息，同时做一次短暂高亮。
+  useEffect(() => {
+    if (!focus.sessionId || !focus.messageId || focus.sessionId !== session.id) {
+      return
+    }
+    const target = contentRef.current?.querySelector<HTMLElement>(
+      `[data-message-id="${CSS.escape(focus.messageId)}"]`
+    )
+    if (!target) {
+      return
+    }
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    target.animate?.(
+      [
+        { boxShadow: '0 0 0 2px rgba(58, 107, 255, 0.75)' },
+        { boxShadow: '0 0 0 2px rgba(58, 107, 255, 0)' },
+      ],
+      { duration: 1600, easing: 'ease-out' }
+    )
+    clearMessageFocus(focus.requestId)
+  }, [focus, session.id, lastMessageId])
 
   // 内容、键盘和输入框高度变化时，继续遵循当前跟随状态。
   useLayoutEffect(() => {

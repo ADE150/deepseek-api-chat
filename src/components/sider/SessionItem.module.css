@@ -30,6 +30,13 @@
   }
 }
 
+.pinIcon {
+  display: flex;
+  flex-shrink: 0;
+  margin-right: 6px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
 .title {
   flex: 1;
   min-width: 0;

@@ -1,3 +1,4 @@
+import { createId } from '../../utils/id.js'
 import type { Message, Session } from './types.js'
 
 /** 将线性消息列表规范化为单分支，保留消息 ID、内容及时间。 */
@@ -97,6 +98,56 @@ export const appendBranch = (
         selectedChildId: messages[index + 1]?.id,
       })),
     ],
+  }
+}
+
+/**
+ * 从当前路径上的某条消息分叉出一个新会话。
+ * - assistant：复制到这条回答并包含它；
+ * - user：复制到这条提问之前，不包含它，避免新会话以没有回答的提问结尾。
+ * 只复制当前选中的路径；所有消息生成新 ID，附件沿用原 id，由存储层按引用计数清理。
+ */
+export const forkSessionAt = (
+  original: Session,
+  messageId: string,
+  newSessionId: string,
+  now: number,
+  title: string
+): Session | null => {
+  const session = normalizeSession(original)
+  const path = getVisibleMessages(session)
+  const index = path.findIndex((message) => message.id === messageId)
+  if (index < 0) {
+    return null
+  }
+  const endIndex = path[index].role === 'assistant' ? index : index - 1
+  if (endIndex < 0) {
+    return null
+  }
+  const selected = path.slice(0, endIndex + 1)
+  if (selected.at(-1)?.role !== 'assistant') {
+    return null
+  }
+  const ids = new Map(selected.map((message) => [message.id, createId()]))
+  const messages = selected.map((message, messageIndex): Message => {
+    const copy = structuredClone(message)
+    copy.id = ids.get(message.id) as string
+    copy.parentId = messageIndex === 0 ? null : (ids.get(selected[messageIndex - 1].id) as string)
+    copy.selectedChildId = ids.get(selected[messageIndex + 1]?.id ?? '')
+    return copy
+  })
+  const rootMessageId = messages[0]?.id
+  if (!rootMessageId) {
+    return null
+  }
+  return {
+    id: newSessionId,
+    title,
+    createdAt: now,
+    updatedAt: now,
+    messages,
+    rootMessageId,
+    forkedFrom: { sessionId: session.id, messageId },
   }
 }
 
